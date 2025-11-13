@@ -1,6 +1,6 @@
 package repository
 
 import (
-	"github.com/GameXost/Avito_Test_Case/internal/models/team.go"
+	"github.com/GameXost/Avito_Test_Case/internal/models"
 )
-func (t *Team)
+func (t *models)
