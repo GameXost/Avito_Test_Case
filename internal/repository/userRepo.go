@@ -17,11 +17,12 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 
 func (u *UserRepo) GetPR(ctx context.Context, userID string) (string, []models.PullRequestShort, error) {
 	var PRequests []models.PullRequestShort
+	// тело запроса: данные для ПуллРеквеста
 	query := `
-	SELECT pull_request.pull_request_id, pull_request.pull_request_name, pull_request.author_id, pull_request.status
-	FROM users
-	JOIN pull_request ON users.user_id = pull_request.author_id
-	WHERE users.user_id = $1`
+	SELECT pr.pull_request_id, pr.pull_request_name, pr.author_id, pr.status
+	FROM users AS u
+	JOIN pull_request AS pr ON u.user_id = pr.author_id
+	WHERE u.user_id = $1`
 
 	rows, err := u.pool.Query(ctx, query, userID)
 	if err != nil {
@@ -49,18 +50,23 @@ func (u *UserRepo) SetActive(ctx context.Context, userID string, isActive bool) 
 		return models.User{}, fmt.Errorf("error in SetActive %w", err)
 	}
 	defer tx.Rollback(ctx)
+
 	var user models.User
 	query := `UPDATE users set is_active = $1 WHERE user_id = $2`
-	_, err = tx.Exec(ctx, query, isActive, userID)
+	res, err := tx.Exec(ctx, query, isActive, userID)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error in SetActive %w", err)
 	}
+	if res.RowsAffected() == 0 {
+		return models.User{}, models.ErrNotFound
+	}
 
-	query = `SELECT users.user_id, users.username, teams.name, users.is_active FROM users JOIN teams ON users.team_id = teams.id WHERE users.user_id = $1`
+	query = `SELECT u.user_id, u.username, t.name, u.is_active FROM users AS u JOIN teams AS t ON u.team_id = t.id WHERE u.user_id = $1`
 	err = tx.QueryRow(ctx, query, userID).Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error in SetActive %w", err)
 	}
+
 	err = tx.Commit(ctx)
 	if err != nil {
 		return models.User{}, fmt.Errorf("error in SetActive %w", err)
