@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"github.com/GameXost/Avito_Test_Case/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -14,7 +15,7 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 	return &UserRepo{pool: pool}
 }
 
-func (u *UserRepo) GetPR(ctx context.Context, userID string) (string, []models.PullRequestShort) {
+func (u *UserRepo) GetPR(ctx context.Context, userID string) (string, []models.PullRequestShort, error) {
 	var PRequests []models.PullRequestShort
 	query := `
 	SELECT pull_request.pull_request_id, pull_request.pull_request_name, pull_request.author_id, pull_request.status
@@ -24,20 +25,45 @@ func (u *UserRepo) GetPR(ctx context.Context, userID string) (string, []models.P
 
 	rows, err := u.pool.Query(ctx, query, userID)
 	if err != nil {
-		return "", nil
+		return "", nil, fmt.Errorf("error in GetPR %w", err)
 	}
 	defer rows.Close()
 	for rows.Next() {
 		var PRShort models.PullRequestShort
 		err = rows.Scan(&PRShort.PullRequestID, &PRShort.PullRequestName, &PRShort.AuthorID, &PRShort.Status)
 		if err != nil {
-			return "", nil
+			return "", nil, fmt.Errorf("error in GetPR %w", err)
 		}
 		PRequests = append(PRequests, PRShort)
 	}
 	err = rows.Err()
 	if err != nil {
-		return "", nil
+		return "", nil, fmt.Errorf("error in GetPR %w", err)
 	}
-	return userID, PRequests
+	return userID, PRequests, nil
+}
+
+func (u *UserRepo) SetActive(ctx context.Context, userID string, isActive bool) (models.User, error) {
+	tx, err := u.pool.Begin(ctx)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error in SetActive %w", err)
+	}
+	defer tx.Rollback(ctx)
+	var user models.User
+	query := `UPDATE users set is_active = $1 WHERE user_id = $2`
+	_, err = tx.Exec(ctx, query, isActive, userID)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error in SetActive %w", err)
+	}
+
+	query = `SELECT users.user_id, users.username, teams.name, users.is_active FROM users JOIN teams ON users.team_id = teams.id WHERE users.user_id = $1`
+	err = tx.QueryRow(ctx, query, userID).Scan(&user.UserID, &user.Username, &user.TeamName, &user.IsActive)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error in SetActive %w", err)
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return models.User{}, fmt.Errorf("error in SetActive %w", err)
+	}
+	return user, nil
 }
