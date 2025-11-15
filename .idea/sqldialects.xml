@@ -2,6 +2,7 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/db/db.sql" dialect="PostgreSQL" />
+    <file url="file://$PROJECT_DIR$/internal/repository/pullRequestRepo.go" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/internal/repository/teamRepo.go" dialect="GenericSQL" />
     <file url="file://$PROJECT_DIR$/internal/repository/userRepo.go" dialect="GenericSQL" />
   </component>

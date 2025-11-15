@@ -20,7 +20,7 @@ CREATE TABLE pull_request
     pull_request_id VARCHAR(255) PRIMARY KEY,
     pull_request_name VARCHAR(255) NOT NULL,
     author_id VARCHAR(255) NOT NULL REFERENCES users(user_id),
-    status VARCHAR(16) NOT NULL,
+    status VARCHAR(16) NOT NULL DEFAULT 'OPEN',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     merged_at TIMESTAMP
 );
