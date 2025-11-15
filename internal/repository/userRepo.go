@@ -17,7 +17,7 @@ func NewUserRepo(pool *pgxpool.Pool) *UserRepo {
 	return &UserRepo{pool: pool}
 }
 
-func (u *UserRepo) GetPR(ctx context.Context, userID string) (string, []models.PullRequestShort, error) {
+func (u *UserRepo) GetUserPR(ctx context.Context, userID string) (string, []models.PullRequestShort, error) {
 	var PRequests []models.PullRequestShort
 	// тело запроса: данные для ПуллРеквеста
 	query := `
