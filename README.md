@@ -85,3 +85,49 @@ linters:
 run:
   timeout: 2m
 ```
+
+
+P.P.S
+Еще захотел поиграть с тестированием
+В докере ничего не падает, сервис продолжает отвечать
+```Bash
+GameXost@моржовый MINGW64 /d/apps/go_files/new_go_vue/Avito_Test_Case (main)                                                                                                          
+$ go-wrk -c 128 -d 300 "http://localhost:8080/team/get?team_name=wow"
+Running 300s test @ http://localhost:8080/team/get?team_name=wow
+  128 goroutine(s) running concurrently
+71802 requests in 15.164266082s, 19.65MB read
+Requests/sec:           4734.95
+Transfer/sec:           1.30MB
+Overall Requests/sec:   239.07
+Overall Transfer/sec:   67.00KB
+Fastest Request:        1.058ms
+Avg Req Time:           27.032ms
+Slowest Request:        1.046911s
+Number of Errors:       38121
+Error Counts:           net/http: timeout awaiting response headers=36025,No connection could be made because the target machine actively refused it.=2096
+10%:                    2.239ms
+50%:                    3.228ms
+75%:                    3.405ms
+99%:                    3.686ms
+99.9%:                  3.696ms
+99.9999%:               3.696ms
+99.99999%:              3.696ms
+stddev:                 95.966ms
+```
+
+```Bash
+rror Counts:           net/http: timeout awaiting response headers=36025,No connection could be made because the target machine actively refused it.=2096
+10%:                    2.239ms
+50%:                    3.228ms
+75%:                    3.405ms
+99%:                    3.686ms
+99.9%:                  3.696ms
+99.9999%:               3.696ms
+99.99999%:              3.696ms
+stddev:                 95.966ms
+
+GameXost@моржовый MINGW64 /d/apps/go_files/new_go_vue/Avito_Test_Case (main)                                                                                                          
+$ curl "http://localhost:8080/team/get?team_name=wow"
+{"team_name":"wow","members":[{"user_id":"1","username":"GameXost","is_active":true},{"user_id":"2","username":"PuPu","is_active":true},{"user_id":"3","username":"Karabaxzzz","is_active":true}]}
+
+```
