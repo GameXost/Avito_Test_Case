@@ -73,8 +73,7 @@ app-1  | 2025/11/16 20:33:13 [2ee9634c35fd/NmRPoMDv82-030106] "GET http://localh
 
 
 
-### линтер
-
+### линтер, запушил в репо
 ```yml
 linters:
   enable:
