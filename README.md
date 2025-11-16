@@ -64,5 +64,25 @@ Error Counts:           net/http: timeout awaiting response headers=3584
 stddev:                 16.024ms
 
 ```
+Ну кстати, сервис в итоге устоял, не крашнулся, ластовые запросы, видимо долго обрабатывался и wrk чет не понрав:
+```Bash
+app-1  | 2025/11/16 20:33:13 [2ee9634c35fd/NmRPoMDv82-030105] "GET http://localhost:8080/team/get?team_name=wow HTTP/1.1" from 172.20.0.1:56264 - 200 195B in 515.064µs               
+app-1  | 2025/11/16 20:33:13 [2ee9634c35fd/NmRPoMDv82-030106] "GET http://localhost:8080/team/get?team_name=wow HTTP/1.1" from 172.20.0.1:56278 - 200 195B in 405.148µs               
+```
 
 
+
+
+### линтер
+
+```yml
+linters:
+  enable:
+    - govet
+    - gofmt
+    - errcheck
+    - staticcheck
+
+run:
+  timeout: 2m
+```

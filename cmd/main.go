@@ -40,7 +40,7 @@ func main() {
 
 	err = pool.Ping(ctx)
 	if err != nil {
-		log.Fatal("cant ping db: %v", err)
+		log.Fatalf("cant ping db: %v", err)
 	}
 
 	log.Println("successfull onnection to postgres")

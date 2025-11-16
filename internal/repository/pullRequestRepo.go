@@ -25,7 +25,9 @@ func (pr *PullRequestRepo) CreatePR(ctx context.Context, request models.PullRequ
 	if err != nil {
 		return fmt.Errorf("error in CreatePR %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	queryPR := `INSERT INTO pull_request (pull_request_id, pull_request_name, author_id) VALUES ($1, $2, $3)`
 
 	_, err = tx.Exec(ctx, queryPR, request.PullRequestID, request.PullRequestName, request.AuthorID)
@@ -60,8 +62,9 @@ func (pr *PullRequestRepo) MergePR(ctx context.Context, prID string) (*models.Pu
 	if err != nil {
 		return nil, fmt.Errorf("error in MergePR %w", err)
 	}
-	defer tx.Rollback(ctx)
-
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var exists bool
 	queryCheck := `SELECT EXISTS(SELECT 1 FROM pull_request WHERE pull_request_id = $1)`
 	err = tx.QueryRow(ctx, queryCheck, prID).Scan(&exists)
@@ -216,7 +219,10 @@ func (pr *PullRequestRepo) DelAndAssign(ctx context.Context, oldRevID, prID, new
 	if err != nil {
 		return fmt.Errorf("error in DelAndAssign %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
+
 	err = pr.DeleteReviewer(ctx, tx, oldRevID, prID)
 	if err != nil {
 		if errors.Is(err, models.ErrNotAssigned) {

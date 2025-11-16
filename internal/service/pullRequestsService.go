@@ -47,7 +47,7 @@ func (p *PullRequestService) CreatePR(ctx context.Context, prID, prName, authorI
 			break
 		}
 
-		if member.IsActive == true && member.UserId != authorID {
+		if member.IsActive && member.UserId != authorID {
 			pullRequest.AssignedReviewers = append(pullRequest.AssignedReviewers, member.UserId)
 		}
 	}
