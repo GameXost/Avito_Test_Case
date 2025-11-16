@@ -205,7 +205,7 @@ func (pr *PullRequestRepo) AssignReviewer(ctx context.Context, tx pgx.Tx, prID, 
 func (pr *PullRequestRepo) IsMerged(ctx context.Context, prID string) (string, error) {
 	var status string
 	query := `SELECT status FROM pull_request WHERE pull_request_id = $1`
-	err := pr.pool.QueryRow(ctx, query).Scan(&status)
+	err := pr.pool.QueryRow(ctx, query, prID).Scan(&status)
 	if err != nil {
 		return "", fmt.Errorf("error in IsMerged %w", err)
 	}

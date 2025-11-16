@@ -15,7 +15,7 @@ var (
 )
 
 type ErrorMessage struct {
-	Code    error  `json:"code"`
+	Code    string `json:"code"`
 	Message string `json:"message"`
 }
 

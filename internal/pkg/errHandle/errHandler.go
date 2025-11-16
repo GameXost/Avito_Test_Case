@@ -1,4 +1,4 @@
-package server
+package errHandle
 
 import (
 	"encoding/json"
@@ -6,13 +6,13 @@ import (
 	"net/http"
 )
 
-func WriteError(w http.ResponseWriter, status int, code error, message string) {
+func WriteError(w http.ResponseWriter, status int, errCode error, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 
 	resp := models.ErrorResponse{
 		Error: models.ErrorMessage{
-			Code:    code,
+			Code:    errCode.Error(),
 			Message: message,
 		},
 	}

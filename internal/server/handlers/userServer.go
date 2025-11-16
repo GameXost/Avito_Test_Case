@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"github.com/GameXost/Avito_Test_Case/internal/server"
+	"github.com/GameXost/Avito_Test_Case/internal/pkg/errHandle"
 	"github.com/GameXost/Avito_Test_Case/internal/service"
 	"github.com/GameXost/Avito_Test_Case/models"
 	"net/http"
@@ -30,12 +30,12 @@ func (u *UserHandler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "invalid JSON")
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "invalid JSON")
 		return
 	}
 
 	if req.UserID == "" {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "user_id is required")
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "user_id is required")
 		return
 	}
 
@@ -43,10 +43,10 @@ func (u *UserHandler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, models.ErrNotFound):
-			server.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
+			errHandle.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
 			return
 		default:
-			server.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
+			errHandle.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
 			return
 		}
 	}
@@ -58,13 +58,13 @@ func (u *UserHandler) SetIsActive(w http.ResponseWriter, r *http.Request) {
 func (u *UserHandler) GetReview(w http.ResponseWriter, r *http.Request) {
 	userID := r.URL.Query().Get("user_id")
 	if userID == "" {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "user_id is required")
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "user_id is required")
 		return
 	}
 
 	pullRequests, err := u.userService.GetUserReviews(r.Context(), userID)
 	if err != nil {
-		server.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
+		errHandle.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
 		return
 	}
 

@@ -9,10 +9,10 @@ import (
 )
 
 type TeamService struct {
-	teamRepo repository.TeamRepo
+	teamRepo *repository.TeamRepo
 }
 
-func NewTeamService(teamRepo repository.TeamRepo) *TeamService {
+func NewTeamService(teamRepo *repository.TeamRepo) *TeamService {
 	return &TeamService{teamRepo: teamRepo}
 }
 

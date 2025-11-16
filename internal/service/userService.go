@@ -12,6 +12,10 @@ type UserService struct {
 	userRepo *repository.UserRepo
 }
 
+func NewUserService(userRepo *repository.UserRepo) *UserService {
+	return &UserService{userRepo: userRepo}
+}
+
 func (u *UserService) GetUserReviews(ctx context.Context, userID string) ([]models.PullRequestShort, error) {
 	pullRequests, err := u.userRepo.GetUserReviews(ctx, userID)
 	if err != nil {

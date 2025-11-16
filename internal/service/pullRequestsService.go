@@ -14,6 +14,13 @@ type PullRequestService struct {
 	teamRepo *repository.TeamRepo
 }
 
+func NewPRService(prRepo *repository.PullRequestRepo, teamRepo *repository.TeamRepo) *PullRequestService {
+	return &PullRequestService{
+		prRepo:   prRepo,
+		teamRepo: teamRepo,
+	}
+}
+
 func (p *PullRequestService) CreatePR(ctx context.Context, prID, prName, authorID string) (*models.PullRequest, error) {
 	pullRequest := models.PullRequest{PullRequestID: prID, PullRequestName: prName, AuthorID: authorID, Status: "OPEN"}
 
@@ -79,6 +86,27 @@ func (p *PullRequestService) Reassign(ctx context.Context, prID, oldRevID string
 		return nil, models.ErrPRMerged
 	}
 
+	// Получаем PR и его ревьюверов
+	pullRequest, err := p.prRepo.GetPRInfo(ctx, prID)
+	if err != nil {
+		switch {
+		case errors.Is(err, models.ErrNotFound):
+			return nil, models.ErrNotFound
+		default:
+			return nil, fmt.Errorf("Reassign: %w", err)
+		}
+	}
+
+	prReviewers, err := p.prRepo.GetReviewers(ctx, prID)
+	if err != nil {
+		return nil, fmt.Errorf("Reassign: %w", err)
+	}
+	pullRequest.AssignedReviewers = prReviewers
+
+	if !slices.Contains(pullRequest.AssignedReviewers, oldRevID) {
+		return nil, models.ErrNotAssigned
+	}
+
 	teamName, err := p.prRepo.GetTeamNameByUserID(ctx, oldRevID)
 	if err != nil {
 		switch {
@@ -97,24 +125,17 @@ func (p *PullRequestService) Reassign(ctx context.Context, prID, oldRevID string
 		return nil, fmt.Errorf("Reassign: %w", err)
 	}
 
-	pullRequest, err := p.prRepo.GetPRInfo(ctx, prID)
-	if err != nil {
-		switch {
-		case errors.Is(err, models.ErrNotFound):
-			return nil, models.ErrNotFound
-		default:
-			return nil, fmt.Errorf("Reassign: %w", err)
-		}
-	}
-	prReviewers, err := p.prRepo.GetReviewers(ctx, prID)
-	if err != nil {
-		return nil, fmt.Errorf("Reassign: %w", err)
-	}
-	pullRequest.AssignedReviewers = prReviewers
 	var newRev string
 	for _, member := range team.Members {
-		if !slices.Contains(pullRequest.AssignedReviewers, member.UserId) && member.UserId != oldRevID && member.UserId != pullRequest.AuthorID {
+		// Проверяем: активен ли член команды
+		if !member.IsActive {
+			continue
+		}
+
+		if !slices.Contains(pullRequest.AssignedReviewers, member.UserId) &&
+			member.UserId != pullRequest.AuthorID {
 			newRev = member.UserId
+
 			err = p.prRepo.DelAndAssign(ctx, oldRevID, prID, member.UserId)
 			if err != nil {
 				switch {
@@ -126,6 +147,7 @@ func (p *PullRequestService) Reassign(ctx context.Context, prID, oldRevID string
 					return nil, fmt.Errorf("Reassign: %w", err)
 				}
 			}
+
 			pullRequest.AssignedReviewers = append(pullRequest.AssignedReviewers, member.UserId)
 			idx := slices.Index(pullRequest.AssignedReviewers, oldRevID)
 			if idx != -1 {
@@ -134,6 +156,7 @@ func (p *PullRequestService) Reassign(ctx context.Context, prID, oldRevID string
 			break
 		}
 	}
+
 	if newRev == "" {
 		return nil, models.ErrNoCandidate
 	}

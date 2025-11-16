@@ -3,7 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"github.com/GameXost/Avito_Test_Case/internal/server"
+	"github.com/GameXost/Avito_Test_Case/internal/pkg/errHandle"
 	"github.com/GameXost/Avito_Test_Case/internal/service"
 	"github.com/GameXost/Avito_Test_Case/models"
 	"net/http"
@@ -27,11 +27,11 @@ func (pr *PRHandler) CreatePR(w http.ResponseWriter, r *http.Request) {
 	var req PRReq
 	err := json.NewDecoder(r.Body).Decode(&req)
 	if err != nil {
-		server.WriteError(w, http.StatusBadRequest, models.ErrInvalidJSON, "invalid JSON")
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrInvalidJSON, "invalid JSON")
 		return
 	}
 	if req.PRID == "" || req.PRName == "" || req.AuthorID == "" {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "required fields: id, name, autrho_id")
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "required fields: id, name, autrho_id")
 		return
 	}
 
@@ -39,13 +39,13 @@ func (pr *PRHandler) CreatePR(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, models.ErrNotFound):
-			server.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
+			errHandle.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
 			return
 		case errors.Is(err, models.ErrPRExists):
-			server.WriteError(w, http.StatusConflict, models.ErrPRExists, "PR id already exists")
+			errHandle.WriteError(w, http.StatusConflict, models.ErrPRExists, "PR id already exists")
 			return
 		default:
-			server.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
+			errHandle.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
 			return
 		}
 	}
@@ -55,19 +55,28 @@ func (pr *PRHandler) CreatePR(w http.ResponseWriter, r *http.Request) {
 }
 
 func (pr *PRHandler) Merge(w http.ResponseWriter, r *http.Request) {
-	prID := r.URL.Query().Get("pull_request_id")
-	if prID == "" {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "pull_request_id is required")
+	var req struct {
+		PullRequestID string `json:"pull_request_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "invalid request body")
 		return
 	}
-	pullRequest, err := pr.prService.Merge(r.Context(), prID)
+
+	if req.PullRequestID == "" {
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "pull_request_id is required")
+		return
+	}
+
+	pullRequest, err := pr.prService.Merge(r.Context(), req.PullRequestID)
 	if err != nil {
 		switch {
 		case errors.Is(err, models.ErrNotFound):
-			server.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
+			errHandle.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
 			return
 		default:
-			server.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
+			errHandle.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
 			return
 		}
 	}
@@ -77,29 +86,38 @@ func (pr *PRHandler) Merge(w http.ResponseWriter, r *http.Request) {
 }
 
 func (pr *PRHandler) Reassign(w http.ResponseWriter, r *http.Request) {
-	prID := r.URL.Query().Get("pull_request_id")
-	oldRev := r.URL.Query().Get("old_reviewer_id")
-	if prID == "" || oldRev == "" {
-		server.WriteError(w, http.StatusBadRequest, models.ErrValidation, "prID and oldRev are required both")
+	var req struct {
+		PullRequestID string `json:"pull_request_id"`
+		OldUserID     string `json:"old_user_id"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "invalid request body")
 		return
 	}
-	pullRequest, err := pr.prService.Reassign(r.Context(), prID, oldRev)
+
+	if req.PullRequestID == "" || req.OldUserID == "" {
+		errHandle.WriteError(w, http.StatusBadRequest, models.ErrValidation, "prID and oldRev are required both")
+		return
+	}
+
+	pullRequest, err := pr.prService.Reassign(r.Context(), req.PullRequestID, req.OldUserID)
 	if err != nil {
 		switch {
 		case errors.Is(err, models.ErrNotFound):
-			server.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
+			errHandle.WriteError(w, http.StatusNotFound, models.ErrNotFound, "resource not found")
 			return
 		case errors.Is(err, models.ErrPRMerged):
-			server.WriteError(w, http.StatusConflict, models.ErrPRMerged, "cannot reassign on merged PR")
+			errHandle.WriteError(w, http.StatusConflict, models.ErrPRMerged, "cannot reassign on merged PR")
 			return
 		case errors.Is(err, models.ErrNotAssigned):
-			server.WriteError(w, http.StatusConflict, models.ErrNotAssigned, "reviewer is not assigned to this PR")
+			errHandle.WriteError(w, http.StatusConflict, models.ErrNotAssigned, "reviewer is not assigned to this PR")
 			return
 		case errors.Is(err, models.ErrNoCandidate):
-			server.WriteError(w, http.StatusConflict, models.ErrNoCandidate, "no active replacement candidate in team")
+			errHandle.WriteError(w, http.StatusConflict, models.ErrNoCandidate, "no active replacement candidate in team")
 			return
 		default:
-			server.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
+			errHandle.WriteError(w, http.StatusInternalServerError, models.ErrDefault, "unexpected server error")
 			return
 		}
 	}
