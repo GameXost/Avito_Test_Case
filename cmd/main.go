@@ -22,7 +22,17 @@ func main() {
 	}
 	ctx := context.Background()
 
-	pool, err := pgxpool.New(ctx, connStr)
+	config, err := pgxpool.ParseConfig(connStr)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	config.MaxConns = 50
+	config.MinConns = 10
+	config.MaxConnLifetime = time.Hour
+	config.MaxConnIdleTime = time.Minute * 30
+
+	pool, err := pgxpool.NewWithConfig(ctx, config)
 	if err != nil {
 		log.Fatalf("cant create pgxpool: %v", err)
 	}
@@ -53,9 +63,9 @@ func main() {
 	srv := &http.Server{
 		Addr:         ":8080",
 		Handler:      router,
-		ReadTimeout:  5 * time.Second,
-		WriteTimeout: 10 * time.Second,
-		IdleTimeout:  60 * time.Second,
+		ReadTimeout:  2 * time.Second,
+		WriteTimeout: 2 * time.Second,
+		IdleTimeout:  5 * time.Second,
 	}
 
 	go func() {
