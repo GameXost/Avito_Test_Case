@@ -18,7 +18,6 @@ func NewPullRequestRepo(pool *pgxpool.Pool) *PullRequestRepo {
 	return &PullRequestRepo{
 		pool: pool,
 	}
-
 }
 
 // убрать часть с добавлением в БД ревьюеров, использовать AssignReviewer в сервисе
@@ -37,6 +36,16 @@ func (pr *PullRequestRepo) CreatePR(ctx context.Context, request models.PullRequ
 			return models.ErrPRExists
 		}
 		return fmt.Errorf("error in CreatePR %w", err)
+	}
+
+	for _, reviewer := range request.AssignedReviewers {
+		err = pr.AssignReviewer(ctx, tx, request.PullRequestID, reviewer)
+		if err != nil {
+			if errors.Is(err, models.ErrNotFound) {
+				return models.ErrNotFound
+			}
+			return fmt.Errorf("error in CreatePR %w", err)
+		}
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
@@ -122,7 +131,6 @@ func (pr *PullRequestRepo) GetTeamNameByUserID(ctx context.Context, userID strin
 	return teamName, nil
 }
 
-// проверку на отсутствие
 func (pr *PullRequestRepo) GetPRInfo(ctx context.Context, prID string) (*models.PullRequest, error) {
 	query := `SELECT pr.pull_request_name, pr.author_id, pr.status FROM pull_request AS pr WHERE pr.pull_request_id = $1`
 	var pullReq models.PullRequest
@@ -136,26 +144,48 @@ func (pr *PullRequestRepo) GetPRInfo(ctx context.Context, prID string) (*models.
 	return &pullReq, nil
 }
 
-func (pr *PullRequestRepo) DeleteReviewer(ctx context.Context, revID, prID string) error {
+func (pr *PullRequestRepo) GetReviewers(ctx context.Context, prID string) ([]string, error) {
+	query := `SELECT reviewer_id FROM pr_reviewers WHERE pr_id = $1`
+	rows, err := pr.pool.Query(ctx, query, prID)
+	if err != nil {
+		return nil, fmt.Errorf("error in GetReviewers %w", err)
+	}
+	defer rows.Close()
+	var reviewers []string
+	for rows.Next() {
+		var reviewer string
+		err = rows.Scan(&reviewer)
+		if err != nil {
+			return nil, fmt.Errorf("error in GetReviewers %w", err)
+		}
+		reviewers = append(reviewers, reviewer)
+	}
+	if rows.Err() != nil {
+		return nil, fmt.Errorf("error in GetReviewers %w", err)
+	}
+	return reviewers, nil
+}
+
+func (pr *PullRequestRepo) DeleteReviewer(ctx context.Context, tx pgx.Tx, revID, prID string) error {
 	queryDel := `DELETE FROM pr_reviewers WHERE reviewer_id = $1 AND pr_id = $2`
-	res, err := pr.pool.Exec(ctx, queryDel, revID, prID)
+	res, err := tx.Exec(ctx, queryDel, revID, prID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == "23503" {
-			return models.ErrNotFound
+			return models.ErrNotAssigned
 		}
 		return fmt.Errorf("error in DELETE reviewer %w", err)
 	}
 	if res.RowsAffected() == 0 {
-		return models.ErrNotFound
+		return models.ErrNotAssigned
 	}
 
 	return nil
 }
 
-func (pr *PullRequestRepo) AssignReviewer(ctx context.Context, prID, revNew string) error {
+func (pr *PullRequestRepo) AssignReviewer(ctx context.Context, tx pgx.Tx, prID, revNew string) error {
 	queryIns := `INSERT INTO pr_reviewers (pr_id, reviewer_id) VALUES($1, $2)`
-	res, err := pr.pool.Exec(ctx, queryIns, prID, revNew)
+	res, err := tx.Exec(ctx, queryIns, prID, revNew)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -170,5 +200,40 @@ func (pr *PullRequestRepo) AssignReviewer(ctx context.Context, prID, revNew stri
 		return models.ErrNotFound // PR не существует
 	}
 	return nil
+}
 
+func (pr *PullRequestRepo) IsMerged(ctx context.Context, prID string) (string, error) {
+	var status string
+	query := `SELECT status FROM pull_request WHERE pull_request_id = $1`
+	err := pr.pool.QueryRow(ctx, query).Scan(&status)
+	if err != nil {
+		return "", fmt.Errorf("error in IsMerged %w", err)
+	}
+	return status, nil
+}
+
+func (pr *PullRequestRepo) DelAndAssign(ctx context.Context, oldRevID, prID, newRevID string) error {
+	tx, err := pr.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("error in DelAndAssign %w", err)
+	}
+	defer tx.Rollback(ctx)
+	err = pr.DeleteReviewer(ctx, tx, oldRevID, prID)
+	if err != nil {
+		if errors.Is(err, models.ErrNotAssigned) {
+			return models.ErrNotAssigned
+		}
+		return fmt.Errorf("error in DelAndAssign %w", err)
+	}
+	err = pr.AssignReviewer(ctx, tx, prID, newRevID)
+	if err != nil {
+		return fmt.Errorf("error in DelAndAssign %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("error in DelAndAssign %w", err)
+	}
+
+	return nil
 }
