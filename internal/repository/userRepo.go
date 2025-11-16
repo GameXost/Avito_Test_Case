@@ -49,8 +49,9 @@ func (u *UserRepo) SetActive(ctx context.Context, userID string, isActive bool) 
 	if err != nil {
 		return nil, fmt.Errorf("error in SetActive %w", err)
 	}
-	defer tx.Rollback(ctx)
-
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var user models.User
 	query := `UPDATE users set is_active = $1 WHERE user_id = $2`
 	res, err := tx.Exec(ctx, query, isActive, userID)

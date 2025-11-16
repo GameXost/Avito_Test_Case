@@ -57,8 +57,9 @@ func (t *TeamRepo) AddTeam(ctx context.Context, team models.Team) error {
 	if err != nil {
 		return fmt.Errorf("error in AddTeam %w", err)
 	}
-	defer tx.Rollback(ctx)
-
+	defer func() {
+		_ = tx.Rollback(ctx)
+	}()
 	var teamID int
 	query := `INSERT INTO teams (name) VALUES ($1) RETURNING id`
 	err = tx.QueryRow(ctx, query, team.TeamName).Scan(&teamID)
