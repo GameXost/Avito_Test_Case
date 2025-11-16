@@ -20,7 +20,6 @@ func NewPullRequestRepo(pool *pgxpool.Pool) *PullRequestRepo {
 	}
 }
 
-// убрать часть с добавлением в БД ревьюеров, использовать AssignReviewer в сервисе
 func (pr *PullRequestRepo) CreatePR(ctx context.Context, request models.PullRequest) error {
 	tx, err := pr.pool.Begin(ctx)
 	if err != nil {

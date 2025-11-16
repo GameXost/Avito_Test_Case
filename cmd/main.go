@@ -16,7 +16,10 @@ import (
 )
 
 func main() {
-	connStr := "host=localhost port=5432 user=postgres password=gopython dbname=postgres sslmode=disable"
+	connStr := os.Getenv("DB_CONN")
+	if connStr == "" {
+		log.Fatal("DB_CONN is not set")
+	}
 	ctx := context.Background()
 
 	pool, err := pgxpool.New(ctx, connStr)
@@ -57,7 +60,7 @@ func main() {
 
 	go func() {
 		log.Println("Server started at http://localhost:8080")
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err = srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("HTTP server error: %v", err)
 		}
 	}()
