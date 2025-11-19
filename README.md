@@ -131,3 +131,46 @@ $ curl "http://localhost:8080/team/get?team_name=wow"
 {"team_name":"wow","members":[{"user_id":"1","username":"GameXost","is_active":true},{"user_id":"2","username":"PuPu","is_active":true},{"user_id":"3","username":"Karabaxzzz","is_active":true}]}
 
 ```
+
+
+
+P.P.P.S. 20.11 Решил еще чуть потестить , уже с пом. Vegeta. Итог: держит 2к\с запросов около 10 секунд с 100%, больше запросов или больше времени - ГГ, проседает
+```Bash
+$ echo "GET http://localhost:8080/team/get?team_name=wow" | vegeta attack -rate=2000 -duration=10s | vegeta report
+Requests      [total, rate, throughput]  20000, 2000.15, 1999.85
+Duration      [total, attack, wait]      10.0007527s, 9.9992362s, 1.5165ms
+Latencies     [mean, 50, 95, 99, max]    1.958228ms, 1.072013ms, 4.026074ms, 19.088386ms, 122.4616ms
+Bytes In      [total, mean]              4920000, 246.00
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    100.00%
+Status Codes  [code:count]               200:20000
+Error Set:
+
+
+
+$ echo "GET http://localhost:8080/team/get?team_name=wow" | vegeta attack -rate=2000 -duration=30s | vegeta report
+Requests      [total, rate, throughput]  59999, 2000.00, 452.07
+Duration      [total, attack, wait]      59.9998851s, 29.9995715s, 30.0003136s
+Latencies     [mean, 50, 95, 99, max]    2.96181755s, 17.037288ms, 24.769279513s, 29.129629685s, 30.0012119s
+Bytes In      [total, mean]              6672504, 111.21
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    45.21%
+Status Codes  [code:count]               0:32875  200:27124
+Error Set:
+Get "http://localhost:8080/team/get?team_name=wow": dial tcp 0.0.0.0:0->[::1]:8080: connectex: No connection could be made because the target machine actively refused it.
+Get "http://localhost:8080/team/get?team_name=wow": EOF
+Get "http://localhost:8080/team/get?team_name=wow": context deadline exceeded (Client.Timeout exceeded while awaiting headers)
+
+$ echo "GET http://localhost:8080/team/get?team_name=wow" | vegeta attack -rate=1000 -duration=30s | vegeta report
+Requests      [total, rate, throughput]  30000, 1000.04, 1000.01
+Duration      [total, attack, wait]      29.9997855s, 29.9987587s, 1.0268ms
+Latencies     [mean, 50, 95, 99, max]    870.639µs, 1.024834ms, 1.553076ms, 2.570445ms, 23.4776ms
+Bytes In      [total, mean]              7380000, 246.00
+Bytes Out     [total, mean]              0, 0.00
+Success       [ratio]                    100.00%
+Status Codes  [code:count]               200:30000
+Error Set:
+
+
+```
+Скорее всего нужно пересмотреть подключение к БД, пересмотреть работу с http и ограничениея с таймаутами, переработать максимальное кол-во пулов к БД и запускать на более мощной машине :)))
